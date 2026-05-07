@@ -1,0 +1,23 @@
+{
+  "name": "peace-vision",
+  "version": "1.0.0",
+  "description": "Peace-vision网页代码",
+  "main": "analyze.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DolaNoDream/Peace-Vision.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DolaNoDream/Peace-Vision/issues"
+  },
+  "homepage": "https://github.com/DolaNoDream/Peace-Vision#readme",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
