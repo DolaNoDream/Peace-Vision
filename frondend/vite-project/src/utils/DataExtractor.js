@@ -13,8 +13,16 @@ class DataExtractor {
   }
 
   static fromPath(filePath) {
-    const workbook = XLSX.readFile(filePath);
-    return new DataExtractor(workbook);
+    const fs = require('fs');
+    
+    if (typeof XLSX.readFile === 'function') {
+      const workbook = XLSX.readFile(filePath);
+      return new DataExtractor(workbook);
+    } else {
+      const data = fs.readFileSync(filePath);
+      const workbook = XLSX.read(data, { type: 'buffer' });
+      return new DataExtractor(workbook);
+    }
   }
 
   getSheetNames() {
@@ -68,7 +76,8 @@ class DataExtractor {
 
   getConflictsByYear(year, sheetName = null) {
     const data = this.getSheetDataAsObjects(sheetName);
-    return data.filter(row => row.year === year);
+    const targetYear = Number(year);
+    return data.filter(row => Number(row.year) === targetYear);
   }
 
   getConflictsByIntensity(intensityLevel, sheetName = null) {
@@ -99,7 +108,7 @@ class DataExtractor {
 
   getUniqueYears(sheetName = null) {
     const data = this.getSheetDataAsObjects(sheetName);
-    const years = new Set(data.map(row => row.year).filter(Boolean));
+    const years = new Set(data.map(row => Number(row.year)).filter(Boolean));
     return Array.from(years).sort((a, b) => a - b);
   }
 
@@ -121,6 +130,125 @@ class DataExtractor {
       uniqueYears: this.getUniqueYears(sheetName).length
     };
   }
+
+  getAllConflictIds(sheetName = null) {
+    const data = this.getSheetDataAsObjects(sheetName);
+    const ids = new Set(data.map(row => row.conflict_id).filter(Boolean));
+    return Array.from(ids);
+  }
+}
+
+class ConflictDataManager {
+  constructor() {
+    this.mainExtractor = null;
+    this.yearExtractor = null;
+    this.mainData = [];
+    this.yearData = [];
+    this.conflictMap = new Map();
+  }
+
+  async loadMainFile(file) {
+    this.mainExtractor = await DataExtractor.fromFile(file);
+    this.mainData = this.mainExtractor.getSheetDataAsObjects();
+    this._buildConflictMap();
+    console.log('Main data loaded:', this.mainData.length, 'records');
+  }
+
+  async loadYearFile(file) {
+    this.yearExtractor = await DataExtractor.fromFile(file);
+    this.yearData = this.yearExtractor.getSheetDataAsObjects();
+    console.log('Year data loaded:', this.yearData.length, 'records');
+  }
+
+  loadMainFileFromPath(filePath) {
+    this.mainExtractor = DataExtractor.fromPath(filePath);
+    this.mainData = this.mainExtractor.getSheetDataAsObjects();
+    this._buildConflictMap();
+  }
+
+  loadYearFileFromPath(filePath) {
+    this.yearExtractor = DataExtractor.fromPath(filePath);
+    this.yearData = this.yearExtractor.getSheetDataAsObjects();
+  }
+
+  _buildConflictMap() {
+    this.conflictMap.clear();
+    this.mainData.forEach(row => {
+      if (row.conflict_id) {
+        this.conflictMap.set(row.conflict_id, row);
+      }
+    });
+    console.log('Conflict map built:', this.conflictMap.size, 'entries');
+  }
+
+  getConflictsByYear(year) {
+    const targetYear = Number(year);
+    console.log('getConflictsByYear called with year:', targetYear, 'type:', typeof targetYear);
+    
+    if (!this.yearExtractor || this.yearData.length === 0) {
+      console.log('Year data not loaded, using main extractor');
+      return this.mainExtractor.getConflictsByYear(targetYear);
+    }
+
+    console.log('Year data available, length:', this.yearData.length);
+    
+    const yearConflicts = this.yearData.filter(row => Number(row.year) === targetYear);
+    console.log('Found', yearConflicts.length, 'records in year table for year', targetYear);
+    
+    const conflictIds = new Set(yearConflicts.map(row => row.conflict_id));
+    console.log('Unique conflict_ids:', conflictIds.size);
+    
+    const result = [];
+    conflictIds.forEach(id => {
+      const mainConflict = this.conflictMap.get(id);
+      if (mainConflict) {
+        const yearRecord = yearConflicts.find(r => r.conflict_id === id);
+        result.push({
+          ...mainConflict,
+          year: yearRecord ? yearRecord.year : mainConflict.year,
+          intensity_level: yearRecord && yearRecord.intensity_level ? yearRecord.intensity_level : mainConflict.intensity_level,
+          total_deaths: yearRecord && yearRecord.best_est ? yearRecord.best_est : (yearRecord && yearRecord.total_deaths ? yearRecord.total_deaths : mainConflict.total_deaths)
+        });
+      } else {
+        console.log('Conflict not found in main data:', id);
+      }
+    });
+    
+    console.log('Final result:', result.length, 'conflicts');
+    return result;
+  }
+
+  getConflictsByLocation(location) {
+    return this.mainExtractor.getConflictsByLocation(location);
+  }
+
+  getAllYears() {
+    if (!this.yearExtractor || this.yearData.length === 0) {
+      return this.mainExtractor.getUniqueYears();
+    }
+    const years = new Set(this.yearData.map(row => Number(row.year)).filter(Boolean));
+    return Array.from(years).sort((a, b) => b - a);
+  }
+
+  getAllLocations() {
+    return this.mainExtractor.getUniqueLocations();
+  }
+
+  getConflictById(conflictId) {
+    return this.conflictMap.get(conflictId);
+  }
+
+  getSummaryStats() {
+    return this.mainExtractor.getSummaryStats();
+  }
+
+  getAllMainData() {
+    return this.mainData;
+  }
+
+  getAllYearData() {
+    return this.yearData;
+  }
 }
 
 export async function extractFromFile(file) {
@@ -138,5 +266,7 @@ export async function extractAllData(file) {
     data: extractor.getSheetDataAsObjects()
   };
 }
+
+export { DataExtractor, ConflictDataManager };
 
 export default DataExtractor;
