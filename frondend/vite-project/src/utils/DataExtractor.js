@@ -259,14 +259,6 @@ export function extractFromPath(filePath) {
   return DataExtractor.fromPath(filePath);
 }
 
-export async function extractAllData(file) {
-  const extractor = await DataExtractor.fromFile(file);
-  return {
-    sheets: extractor.getSheetNames(),
-    data: extractor.getSheetDataAsObjects()
-  };
-}
-
 export { DataExtractor, ConflictDataManager };
 
 export default DataExtractor;

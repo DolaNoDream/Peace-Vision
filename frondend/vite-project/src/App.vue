@@ -16,14 +16,12 @@
     </header>
 
     <div class="app-content" v-if="dataLoaded">
-      <div class="top-section">
-        <div class="map-panel">
-          
-        </div>
+      
+       
         <div class="river-panel">
-
+          <RiverChart @click-year="handleRiverClickYear" />
         </div>
-      </div>
+      
     </div>
 
     <div v-else class="empty-state">
@@ -59,6 +57,7 @@ import { ref, computed, onMounted } from 'vue';
 import MapComponent from './components/MapComponent.vue';
 import RiverComponent from './components/RiverComponent.vue';
 import ConflictSankey from './components/ConflictSankey.vue';
+import RiverChart from './components/RiverMap/River6.vue';
 import { ConflictDataManager } from './utils/DataExtractor.js';
 
 import '@/styles/app.css';
@@ -138,6 +137,14 @@ const handleSankeyClose = () => {
   sankeyVisible.value = false;
 };
 
+const handleRiverClickYear = (year) => {
+  console.log('River6 clicked, year:', year);
+  handleViewSankey({
+    type: 'year',
+    value: year
+  });
+};
+
 onMounted(() => {
   loadData();
 });
@@ -195,22 +202,24 @@ onMounted(() => {
 
 .app-content {
   flex: 1;
-  padding: 20px;
+  padding: 2%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 2%;
 }
 
 .top-section {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  height: 450px;
+  gap: 2%;
+  flex: 1;
+  min-height: 400px;
 }
 
 .map-panel,
 .river-panel {
-  height: 100%;
+  height: 150%;
+  overflow: hidden;
 }
 
 .empty-state {
