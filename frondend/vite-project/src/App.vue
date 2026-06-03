@@ -7,7 +7,7 @@
           正在加载数据...
         </div>
         <div v-else-if="dataLoaded" class="data-status">
-          数据已加载: {{ allData.length }} 条记录
+          数据已加载
         </div>
         <div v-else class="error-status">
           ❌ 数据加载失败
@@ -16,12 +16,15 @@
     </header>
 
     <div class="app-content" v-if="dataLoaded">
+      <!-- 第一模块：热力图 -->
+      <section class="module-section map-section">
+        <WarHeatmap />
+      </section>
       
-       
-        <div class="river-panel">
-          <RiverChart @click-year="handleRiverClickYear" />
-        </div>
-      
+      <!-- 第二模块：河流图 -->
+      <section class="module-section river-section">
+        <RiverChart @click-year="handleRiverClickYear" />
+      </section>
     </div>
 
     <div v-else class="empty-state">
@@ -54,20 +57,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import MapComponent from './components/MapComponent.vue';
-import RiverComponent from './components/RiverComponent.vue';
 import ConflictSankey from './components/ConflictSankey.vue';
 import RiverChart from './components/RiverMap/River6.vue';
+import WarHeatmap from './components/map/WarHeatmap.vue';
 import { ConflictDataManager } from './utils/DataExtractor.js';
 
-import '@/styles/app.css';
-
-const allData = ref([]);
 const dataLoaded = ref(false);
 const loading = ref(true);
-const selectedLocation = ref('');
-const selectedYear = ref(0);
-const availableYears = ref([]);
 
 const sankeyVisible = ref(false);
 const sankeyLocation = ref('');
@@ -94,36 +90,13 @@ const loadData = async () => {
       await dataManager.value.loadYearFile(yearBlob);
     }
 
-    allData.value = dataManager.value.getAllMainData();
     dataLoaded.value = true;
-    
-    if (allData.value.length > 0) {
-      availableYears.value = dataManager.value.getAllYears();
-      const locations = dataManager.value.getAllLocations();
-      
-      if (availableYears.value.length > 0) {
-        selectedYear.value = availableYears.value[0];
-      }
-      if (locations.length > 0) {
-        selectedLocation.value = locations[0];
-      }
-    }
   } catch (error) {
     console.error('数据加载失败:', error);
     dataLoaded.value = false;
   } finally {
     loading.value = false;
   }
-};
-
-const handleLocationSelect = (location) => {
-  selectedLocation.value = location;
-};
-
-const handleYearSelect = (year) => {
-  const yearValue = Number(year);
-  console.log('handleYearSelect called, year:', yearValue, 'type:', typeof yearValue);
-  selectedYear.value = yearValue;
 };
 
 const handleViewSankey = (params) => {
@@ -150,6 +123,15 @@ onMounted(() => {
 });
 </script>
 
+<style>
+body {
+  background-color: #514747;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+}
+</style>
+
 <style scoped>
 .app-container {
   width: 100%;
@@ -159,8 +141,8 @@ onMounted(() => {
 }
 
 .app-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, #731513 0%, #96281B 100%);
+  color: #F9F6F0;
   padding: 20px 30px;
   display: flex;
   justify-content: space-between;
@@ -172,6 +154,7 @@ onMounted(() => {
   font-size: 24px;
   font-weight: 600;
   letter-spacing: 1px;
+  margin: 0;
 }
 
 .header-actions {
@@ -202,24 +185,24 @@ onMounted(() => {
 
 .app-content {
   flex: 1;
-  padding: 2%;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 2%;
+  gap: 20px;
 }
 
-.top-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2%;
-  flex: 1;
-  min-height: 400px;
-}
-
-.map-panel,
-.river-panel {
-  height: 150%;
+.module-section {
+  border-radius: 10px;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.map-section {
+  min-height: 60vh;
+}
+
+.river-section {
+  min-height: 40vh;
 }
 
 .empty-state {
@@ -253,8 +236,8 @@ onMounted(() => {
 .loader-ring {
   width: 60px;
   height: 60px;
-  border: 4px solid rgba(102, 126, 234, 0.2);
-  border-top-color: #667eea;
+  border: 4px solid rgba(115, 21, 19, 0.2);
+  border-top-color: #731513;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -267,25 +250,25 @@ onMounted(() => {
 
 .loader-text {
   font-size: 16px;
-  color: #667eea;
+  color: #F9F6F0;
 }
 
 .empty-content h2 {
   font-size: 28px;
-  color: #333;
+  color: #F9F6F0;
   margin-bottom: 12px;
 }
 
 .empty-content p {
   font-size: 16px;
-  color: #666;
+  color: #E2DFD7;
   margin-bottom: 30px;
 }
 
 .retry-btn {
   display: inline-block;
   padding: 12px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #731513 0%, #96281B 100%);
   color: white;
   border-radius: 8px;
   cursor: pointer;
@@ -295,6 +278,6 @@ onMounted(() => {
 
 .retry-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(115, 21, 19, 0.3);
 }
 </style>
