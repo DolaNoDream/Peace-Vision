@@ -1,37 +1,3 @@
-<template>
-  <div class="war-heatmap-container">
-    <div class="war-heatmap-box">
-      <div v-if="loadingMsg" class="loading-overlay">{{ loadingMsg }}</div>
-      <div ref="chartRef" class="map-canvas"></div>
-      <div class="time-control-panel">
-        <div class="year-num">{{ currentYear === 1945 ? '1946-2024 历史累计' : currentYear }}</div>
-        <input type="range" v-model.number="currentYear" min="1945" max="2024" step="1" class="time-slider" />
-        <div class="slider-labels"><span :class="{active: currentYear === 1945}">SUMMARY</span><span>1946</span><span>2024</span></div>
-      </div>
-      <div v-if="currentYear === 1945" class="view-toggle">
-        <button :class="{ active: summaryViewMode === '3d' }" @click="summaryViewMode = '3d'">3D 柱状图</button>
-        <button :class="{ active: summaryViewMode === '2d' }" @click="summaryViewMode = '2d'">2D 热力图</button>
-      </div>
-    </div>
-    <div v-if="currentYear === 1945 && summaryViewMode === '2d' && selectedCountry" class="line-chart-container">
-      <div ref="chartLineRef" class="line-chart"></div>
-    </div>
-    <Teleport to="body">
-      <div v-if="showSankeyDialog" class="sankey-dialog-overlay" @click.self="closeSankeyDialog">
-        <div class="sankey-dialog">
-          <div class="sankey-dialog-header">
-            <span>{{ dialogCountry }} - 冲突流向桑基图</span>
-            <button class="sankey-dialog-close" @click="closeSankeyDialog">×</button>
-          </div>
-          <div class="sankey-dialog-body">
-            <div ref="sankeyContainer" class="sankey-container"></div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue';
 import * as echarts from 'echarts';
@@ -52,8 +18,12 @@ const showSankeyDialog = ref(false);
 const dialogCountry = ref('');
 const sankeyContainer = ref(null);
 
-let rawConflictData = [];
+// 死亡人数数据（UCDP）
+let deathConflictData = [];
 let battleDeathData = [];
+
+// 战争次数数据（conflicts.xlsx）
+let warCountData = [];
 
 // ---------- 国家名称映射（适配官方 GeoJSON）----------
 const nameMap = {
@@ -77,13 +47,13 @@ const nameMap = {
   'Brazil': 'Brazil',
   'Brunei': 'Brunei',
   'Botswana': 'Botswana',
-  'Cambodia': 'Cambodia',
+  'Cambodia': 'Cambodia (Kampuchea)',
   'Central African Republic': 'Central African Republic',
   'Canada': 'Canada',
   'Switzerland': 'Switzerland',
   'Chile': 'Chile',
   'China': 'China',
-  'Côte d\'Ivoire': 'Ivory Coast',
+  "Côte d'Ivoire": 'Ivory Coast',
   'Cameroon': 'Cameroon',
   'Democratic Republic of the Congo': 'DR Congo (Zaire)',
   'Congo': 'Congo',
@@ -149,7 +119,7 @@ const nameMap = {
   'Mexico': 'Mexico',
   'North Macedonia': 'North Macedonia',
   'Mali': 'Mali',
-  'Myanmar': 'Myanmar',
+  'Myanmar': 'Myanmar (Burma)',
   'Montenegro': 'Montenegro',
   'Mongolia': 'Mongolia',
   'Mozambique': 'Mozambique',
@@ -174,7 +144,7 @@ const nameMap = {
   'Paraguay': 'Paraguay',
   'Qatar': 'Qatar',
   'Romania': 'Romania',
-  'Russia': 'Russia',
+  'Russia': 'Russia (Soviet Union)',
   'Rwanda': 'Rwanda',
   'Saudi Arabia': 'Saudi Arabia',
   'Sudan': 'Sudan',
@@ -207,13 +177,13 @@ const nameMap = {
   'United States of America': 'United States of America',
   'Uzbekistan': 'Uzbekistan',
   'Venezuela': 'Venezuela',
-  'Vietnam': 'Vietnam',
+  'Vietnam': 'Vietnam (North Vietnam)',
   'Yemen': 'Yemen (North Yemen)',
   'Zambia': 'Zambia',
-  'Zimbabwe': 'Zimbabwe'
+  'Zimbabwe': 'Zimbabwe (Rhodesia)'
 };
 
-// ---------- 国家经纬度中心点（与官方名称一致）----------
+// ---------- 国家经纬度中心点 ----------
 const countryCentroids = {
   'Afghanistan': [66.0047, 33.9391],
   'Angola': [17.8739, -11.2027],
@@ -241,7 +211,7 @@ const countryCentroids = {
   'Switzerland': [8.2275, 46.8182],
   'Chile': [-71.5429, -35.6751],
   'China': [104.1954, 35.8617],
-  'Côte d\'Ivoire': [-5.5471, 7.5399],
+  "Côte d'Ivoire": [-5.5471, 7.5399],
   'Cameroon': [12.3547, 7.3697],
   'Democratic Republic of the Congo': [21.7587, -4.0383],
   'Congo': [15.8277, -0.2280],
@@ -375,7 +345,7 @@ const getCentroid = (countryName) => {
   const variants = {
     'Russia (Soviet Union)': 'Russia',
     'DR Congo (Zaire)': 'Democratic Republic of the Congo',
-    'Ivory Coast': 'Côte d\'Ivoire',
+    'Ivory Coast': "Côte d'Ivoire",
     'Zimbabwe (Rhodesia)': 'Zimbabwe',
     'Myanmar (Burma)': 'Myanmar',
     'Laos': 'Laos',
@@ -397,7 +367,7 @@ const getCentroid = (countryName) => {
   return [0, 0];
 };
 
-// ---------- 历史战争修正 ----------
+// ==================== 死亡人数历史战争修正 ====================
 const getHistoricalOverride = (location, year) => {
   const locStr = String(location || "");
   if (locStr.includes("Korea") && year >= 1950 && year <= 1953) return 180000;
@@ -430,37 +400,222 @@ const getConflictDeaths = (conf, year) => {
   return isNaN(deaths) ? 0 : deaths;
 };
 
-const normalizeCountryNames = () => {
-  rawConflictData.forEach(conf => {
-    if (conf.location) {
-      let loc = String(conf.location);
-      const replacements = {
-        'Russia (Soviet Union)': 'Russia',
-        'Russian Federation': 'Russia',
-        'DR Congo (Zaire)': 'Democratic Republic of the Congo',
-        'Ivory Coast': 'Côte d\'Ivoire',
-        'Zimbabwe (Rhodesia)': 'Zimbabwe',
-        'Myanmar (Burma)': 'Myanmar',
-        'Laos': 'Laos',
-        'Cambodia (Kampuchea)': 'Cambodia',
-        'Vietnam (North Vietnam)': 'Vietnam',
-        'Central African Republic': 'Central African Republic',
-        'South Sudan': 'South Sudan',
-        'Dem. Rep. Congo': 'Democratic Republic of the Congo',
-        'Congo': 'Congo'
-      };
-      for (const [orig, target] of Object.entries(replacements)) {
-        loc = loc.replace(new RegExp(orig, 'g'), target);
-      }
-      conf.location = loc;
-    }
+// ==================== 统一国家名称（精确映射） ====================
+const aliasToStandard = {
+  'Afghanistan': 'Afghanistan',
+  'Albania': 'Albania',
+  'Algeria': 'Algeria',
+  'Angola': 'Angola',
+  'Argentina': 'Argentina',
+  'Armenia': 'Armenia',
+  'Australia': 'Australia',
+  'Austria': 'Austria',
+  'Azerbaijan': 'Azerbaijan',
+  'Bangladesh': 'Bangladesh',
+  'Belgium': 'Belgium',
+  'Benin': 'Benin',
+  'Bolivia': 'Bolivia',
+  'Bosnia-Herzegovina': 'Bosnia-Herzegovina',
+  'Botswana': 'Botswana',
+  'Brazil': 'Brazil',
+  'Brunei': 'Brunei',
+  'Bulgaria': 'Bulgaria',
+  'Burkina Faso': 'Burkina Faso',
+  'Burundi': 'Burundi',
+  'Cambodia': 'Cambodia (Kampuchea)',
+  'Cambodia (Kampuchea)': 'Cambodia (Kampuchea)',
+  'Cameroon': 'Cameroon',
+  'Canada': 'Canada',
+  'Central African Republic': 'Central African Republic',
+  'Central African Rep.': 'Central African Republic',
+  'Chad': 'Chad',
+  'Chile': 'Chile',
+  'China': 'China',
+  'Colombia': 'Colombia',
+  'Comoros': 'Comoros',
+  'Congo': 'Congo',
+  'Costa Rica': 'Costa Rica',
+  'Croatia': 'Croatia',
+  'Cuba': 'Cuba',
+  'Cyprus': 'Cyprus',
+  'Czech Republic': 'Czech Republic',
+  'Czech Rep.': 'Czech Republic',
+  'DR Congo (Zaire)': 'DR Congo (Zaire)',
+  'Democratic Republic of the Congo': 'DR Congo (Zaire)',
+  'Dem. Rep. Congo': 'DR Congo (Zaire)',
+  'Djibouti': 'Djibouti',
+  'Dominican Republic': 'Dominican Republic',
+  'Dominican Rep.': 'Dominican Republic',
+  'Ecuador': 'Ecuador',
+  'Egypt': 'Egypt',
+  'El Salvador': 'El Salvador',
+  'Eritrea': 'Eritrea',
+  'Estonia': 'Estonia',
+  'Ethiopia': 'Ethiopia',
+  'Finland': 'Finland',
+  'France': 'France',
+  'Gabon': 'Gabon',
+  'Gambia': 'Gambia',
+  'Georgia': 'Georgia',
+  'Germany': 'Germany',
+  'Ghana': 'Ghana',
+  'Greece': 'Greece',
+  'Grenada': 'Grenada',
+  'Guatemala': 'Guatemala',
+  'Guinea': 'Guinea',
+  'Guinea-Bissau': 'Guinea-Bissau',
+  'Haiti': 'Haiti',
+  'Honduras': 'Honduras',
+  'Hungary': 'Hungary',
+  'India': 'India',
+  'Indonesia': 'Indonesia',
+  'Iran': 'Iran',
+  'Iraq': 'Iraq',
+  'Ireland': 'Ireland',
+  'Israel': 'Israel',
+  'Italy': 'Italy',
+  'Ivory Coast': 'Ivory Coast',
+  "Côte d'Ivoire": 'Ivory Coast',
+  'Jamaica': 'Jamaica',
+  'Japan': 'Japan',
+  'Jordan': 'Jordan',
+  'Kazakhstan': 'Kazakhstan',
+  'Kenya': 'Kenya',
+  'Kuwait': 'Kuwait',
+  'Kyrgyzstan': 'Kyrgyzstan',
+  'Laos': 'Laos',
+  'Lao PDR': 'Laos',
+  'Latvia': 'Latvia',
+  'Lebanon': 'Lebanon',
+  'Lesotho': 'Lesotho',
+  'Liberia': 'Liberia',
+  'Libya': 'Libya',
+  'Lithuania': 'Lithuania',
+  'Madagascar': 'Madagascar (Malagasy)',
+  'Madagascar (Malagasy)': 'Madagascar (Malagasy)',
+  'Malaysia': 'Malaysia',
+  'Mali': 'Mali',
+  'Mauritania': 'Mauritania',
+  'Mexico': 'Mexico',
+  'Moldova': 'Moldova',
+  'Mongolia': 'Mongolia',
+  'Montenegro': 'Montenegro',
+  'Morocco': 'Morocco',
+  'Mozambique': 'Mozambique',
+  'Myanmar': 'Myanmar (Burma)',
+  'Myanmar (Burma)': 'Myanmar (Burma)',
+  'Namibia': 'Namibia',
+  'Nepal': 'Nepal',
+  'Netherlands': 'Netherlands',
+  'New Zealand': 'New Zealand',
+  'Nicaragua': 'Nicaragua',
+  'Niger': 'Niger',
+  'Nigeria': 'Nigeria',
+  'North Korea': 'North Korea',
+  'Dem. Rep. Korea': 'North Korea',
+  'North Macedonia': 'North Macedonia',
+  'Norway': 'Norway',
+  'Oman': 'Oman',
+  'Pakistan': 'Pakistan',
+  'Panama': 'Panama',
+  'Papua New Guinea': 'Papua New Guinea',
+  'Paraguay': 'Paraguay',
+  'Peru': 'Peru',
+  'Philippines': 'Philippines',
+  'Poland': 'Poland',
+  'Portugal': 'Portugal',
+  'Qatar': 'Qatar',
+  'Romania': 'Romania',
+  'Russia': 'Russia (Soviet Union)',
+  'Russian Federation': 'Russia (Soviet Union)',
+  'Russia (Soviet Union)': 'Russia (Soviet Union)',
+  'Rwanda': 'Rwanda',
+  'Saudi Arabia': 'Saudi Arabia',
+  'Senegal': 'Senegal',
+  'Serbia': 'Serbia (Yugoslavia)',
+  'Serbia (Yugoslavia)': 'Serbia (Yugoslavia)',
+  'Sierra Leone': 'Sierra Leone',
+  'Slovakia': 'Slovakia',
+  'Slovenia': 'Slovenia',
+  'Somalia': 'Somalia',
+  'South Africa': 'South Africa',
+  'South Korea': 'South Korea',
+  'Korea': 'South Korea',
+  'South Sudan': 'South Sudan',
+  'S. Sudan': 'South Sudan',
+  'Spain': 'Spain',
+  'Sri Lanka': 'Sri Lanka',
+  'Sudan': 'Sudan',
+  'Suriname': 'Suriname',
+  'Sweden': 'Sweden',
+  'Switzerland': 'Switzerland',
+  'Syria': 'Syria',
+  'Taiwan': 'Taiwan',
+  'Tajikistan': 'Tajikistan',
+  'Tanzania': 'Tanzania',
+  'United Republic of Tanzania': 'Tanzania',
+  'Thailand': 'Thailand',
+  'Togo': 'Togo',
+  'Trinidad and Tobago': 'Trinidad and Tobago',
+  'Tunisia': 'Tunisia',
+  'Turkey': 'Turkey',
+  'Turkmenistan': 'Turkmenistan',
+  'Uganda': 'Uganda',
+  'Ukraine': 'Ukraine',
+  'United Arab Emirates': 'United Arab Emirates',
+  'United Kingdom': 'United Kingdom',
+  'United States of America': 'United States of America',
+  'Uruguay': 'Uruguay',
+  'Uzbekistan': 'Uzbekistan',
+  'Venezuela': 'Venezuela',
+  'Vietnam': 'Vietnam (North Vietnam)',
+  'Vietnam (North Vietnam)': 'Vietnam (North Vietnam)',
+  'Vietnam (South Vietnam)': 'Vietnam (North Vietnam)',
+  'Yemen': 'Yemen (North Yemen)',
+  'Yemen (North Yemen)': 'Yemen (North Yemen)',
+  'Yemen (South Yemen)': 'Yemen (North Yemen)',
+  'Zambia': 'Zambia',
+  'Zimbabwe': 'Zimbabwe (Rhodesia)',
+  'Zimbabwe (Rhodesia)': 'Zimbabwe (Rhodesia)',
+};
+
+const normalizeDeathCountryNames = () => {
+  deathConflictData.forEach(conf => {
+    if (!conf.location) return;
+    const parts = String(conf.location).split(',');
+    const normalized = parts.map(p => {
+      const trimmed = p.trim();
+      return aliasToStandard[trimmed] || trimmed;
+    });
+    conf.location = normalized.join(',');
   });
 };
 
+const normalizeWarCountCountryNames = () => {
+  warCountData.forEach(conf => {
+    if (!conf.location) return;
+    const parts = String(conf.location).split(',');
+    const normalized = parts.map(p => {
+      const trimmed = p.trim();
+      return aliasToStandard[trimmed] || trimmed;
+    });
+    conf.location = normalized.join(',');
+  });
+};
+
+// ==================== 折线图数据（基于死亡数据） ====================
 const getCountryYearlyDeaths = (countryName) => {
+  if (countryName === 'United States of America') {
+    const result = [];
+    for (let y = 1946; y <= 2024; y++) {
+      result.push({ year: y, deaths: 0 });
+    }
+    return result;
+  }
+
   const yearlyMap = new Map();
   for (let y = 1946; y <= 2024; y++) yearlyMap.set(y, 0);
-  rawConflictData.forEach(conf => {
+  deathConflictData.forEach(conf => {
     const confYear = Number(conf.year);
     if (isNaN(confYear) || confYear < 1946 || confYear > 2024) return;
     const locations = String(conf.location || "").split(',');
@@ -479,6 +634,10 @@ const getCountryYearlyDeaths = (countryName) => {
 const renderLineChart = async (countryName) => {
   await nextTick();
   if (!chartLineRef.value) return;
+  if (lineChart && lineChart.getDom() && lineChart.getDom() !== chartLineRef.value) {
+    lineChart.dispose();
+    lineChart = null;
+  }
   if (!lineChart) lineChart = echarts.init(chartLineRef.value);
   const yearlyData = getCountryYearlyDeaths(countryName);
   const years = yearlyData.map(d => d.year);
@@ -495,28 +654,24 @@ const renderLineChart = async (countryName) => {
 
 const clearLineChart = () => {
   if (lineChart) {
-    lineChart.clear();
     lineChart.dispose();
     lineChart = null;
   }
   selectedCountry.value = null;
 };
 
-const openSankeyDialog = async (countryName) => {
+const openSankeyDialog = async (countryName, year = null) => {
   dialogCountry.value = countryName;
   showSankeyDialog.value = true;
   await nextTick();
   if (sankeyContainer.value) {
-    // 清空并显示占位提示
     sankeyContainer.value.innerHTML = '';
     const placeholder = document.createElement('div');
     placeholder.style.cssText = 'display: flex; justify-content: center; align-items: center; height: 100%; color: #999; font-size: 16px;';
     placeholder.textContent = '桑基图正在开发中，敬请期待...';
     sankeyContainer.value.appendChild(placeholder);
-    
-    // 触发外部集成事件
     const event = new CustomEvent('sankey-render-request', {
-      detail: { country: countryName, container: sankeyContainer.value }
+      detail: { country: countryName, year: year, container: sankeyContainer.value }
     });
     window.dispatchEvent(event);
   }
@@ -527,14 +682,14 @@ const closeSankeyDialog = () => {
   dialogCountry.value = '';
 };
 
-// ---------- 2D 热力图渲染 ----------
+// ==================== 2D 热力图渲染（基于死亡数据） ====================
 const renderMap = (mapData, isSummary = false) => {
   if (!myChart) return;
   const option = {
     backgroundColor: '#FDFBF7',
     title: {
       text: isSummary ? '1946-2024 全球战争死亡数据汇总 (累计死亡人数)' : `全球战争伤亡演变 (${currentYear.value}年)`,
-      subtext: isSummary ? '点击国家显示年度死亡趋势及详细桑基图' : '颜色深浅代表当年估计死亡人数',
+      subtext: isSummary ? '点击国家显示年度死亡趋势及详细桑基图' : '点击国家显示该年桑基图',
       left: 'center', top: 20,
       textStyle: { color: '#2C2B28', fontSize: 24, fontWeight: 'bold' }
     },
@@ -562,7 +717,7 @@ const renderMap = (mapData, isSummary = false) => {
   };
   myChart.setOption(option, true);
   
-  if (isSummary && myChart) {
+  if (myChart) {
     myChart.off('click');
     myChart.on('click', async (params) => {
       if (params.componentType === 'series' && params.seriesType === 'map') {
@@ -571,7 +726,11 @@ const renderMap = (mapData, isSummary = false) => {
           selectedCountry.value = country;
           await nextTick();
           await renderLineChart(country);
-          openSankeyDialog(country);
+          if (currentYear.value === 1945) {
+            await openSankeyDialog(country, null);
+          } else {
+            await openSankeyDialog(country, currentYear.value);
+          }
         }
       }
     });
@@ -582,7 +741,7 @@ const renderMap = (mapData, isSummary = false) => {
   }
 };
 
-// ---------- 3D 柱状图渲染 ----------
+// ==================== 3D 柱状图渲染（使用 warCountData） ====================
 const render3DSummaryMap = (countryWarCounts) => {
   if (!myChart) return;
   if (myChart) myChart.off('click');
@@ -604,7 +763,6 @@ const render3DSummaryMap = (countryWarCounts) => {
     geo3D: {
       map: 'world',
       roam: true,
-      nameMap: nameMap,
       boxWidth: 150,
       boxHeight: 30,
       regionHeight: 1,
@@ -626,37 +784,80 @@ const render3DSummaryMap = (countryWarCounts) => {
     series: [{ type: 'bar3D', coordinateSystem: 'geo3D', data: barData, barSize: 0.8, minHeight: 0.3, shading: 'realistic', label: { show: true, formatter: (params) => params.data.name, position: 'top', distance: 5, textStyle: { fontSize: 10, color: '#333', backgroundColor: 'rgba(255,255,255,0.7)', padding: [2,4,2,4], borderRadius: 4 } }, itemStyle: { color: (params) => { const c = params.data.warCount; if (c > 500) return '#731513'; if (c > 100) return '#BD2E1F'; if (c > 30) return '#E66B22'; if (c > 5) return '#F8B87A'; return '#C9B99A'; }, borderWidth: 0, opacity: 0.92 } }]
   };
   myChart.setOption(option, true);
+  
+  // 为3D柱状图添加点击事件
+  myChart.on('click', async (params) => {
+    if (params.componentType === 'series' && params.seriesType === 'bar3D') {
+      const country = params.data.name;
+      if (country) {
+        selectedCountry.value = country;
+        await nextTick();
+        await renderLineChart(country);
+        await openSankeyDialog(country, null);
+      }
+    }
+  });
 };
 
-// ---------- 视图更新入口 ----------
+// ==================== 视图模式切换处理 ====================
+const handleViewModeToggle = (mode) => {
+  summaryViewMode.value = mode;
+  // 如果不在SUMMARY模式，切换到SUMMARY模式以便查看3D/2D视图
+  if (currentYear.value !== 1945) {
+    currentYear.value = 1945;
+  } else {
+    // 在SUMMARY模式下，重新渲染对应视图
+    updateView(currentYear.value);
+  }
+};
+
+// ==================== 视图更新入口 ====================
 const updateView = (year) => {
-  if (!rawConflictData.length) return;
+  if (!deathConflictData.length) return;
+  
   if (year === 1945) {
     const countrySummaryDeaths = new Map();
-    const countrySummaryWarCounts = new Map();
-    rawConflictData.forEach(conf => {
+    deathConflictData.forEach(conf => {
       const confYear = Number(conf.year);
       if (isNaN(confYear) || confYear < 1946 || confYear > 2024) return;
       const deaths = getConflictDeaths(conf, confYear);
       const locations = String(conf.location || "").split(',');
-      locations.forEach(loc => { const name = loc.trim(); if (name) { countrySummaryDeaths.set(name, (countrySummaryDeaths.get(name) || 0) + deaths); countrySummaryWarCounts.set(name, (countrySummaryWarCounts.get(name) || 0) + 1); } });
+      locations.forEach(loc => { const name = loc.trim(); if (name) { countrySummaryDeaths.set(name, (countrySummaryDeaths.get(name) || 0) + deaths); } });
     });
+    countrySummaryDeaths.set('United States of America', 0);
+    
+    let countrySummaryWarCounts = new Map();
+    if (warCountData.length) {
+      warCountData.forEach(conf => {
+        const confYear = Number(conf.year);
+        if (isNaN(confYear) || confYear < 1946 || confYear > 2024) return;
+        const locations = String(conf.location || "").split(',');
+        locations.forEach(loc => { const name = loc.trim(); if (name) { countrySummaryWarCounts.set(name, (countrySummaryWarCounts.get(name) || 0) + 1); } });
+      });
+    }
+    
     if (summaryViewMode.value === '3d') {
       render3DSummaryMap(countrySummaryWarCounts);
     } else {
       const mapData = Array.from(countrySummaryDeaths).filter(([_, v]) => !isNaN(v)).map(([n, v]) => ({ name: n, value: v }));
       renderMap(mapData, true);
-      if (chartLineRef.value && !lineChart) {
-        lineChart = echarts.init(chartLineRef.value);
-      }
+      // 不再自动恢复折线图，selectedCountry 已经为 null（从 else 分支回来时清空了）
     }
   } else {
-    const yearly = rawConflictData.filter(c => c.year == year);
+    // 离开 Summary 时，销毁折线图并清空选中状态
+    if (lineChart) {
+      lineChart.dispose();
+      lineChart = null;
+    }
+    selectedCountry.value = null;  // 关键修改：清空选中，回到 Summary 后不显示折线图
+    
+    const yearly = deathConflictData.filter(c => c.year == year);
     const countryValues = new Map();
     yearly.forEach(conf => {
       const deaths = getConflictDeaths(conf, year);
       String(conf.location || "").split(',').forEach(loc => { const name = loc.trim(); if (name) countryValues.set(name, (countryValues.get(name) || 0) + deaths); });
     });
+    countryValues.set('United States of America', 0);
     const mapData = Array.from(countryValues).filter(([_, v]) => !isNaN(v)).map(([n, v]) => ({ name: n, value: v }));
     renderMap(mapData, false);
   }
@@ -677,14 +878,70 @@ onMounted(async () => {
   myChart = echarts.init(chartRef.value);
   const loadExcel = async (url) => { const res = await fetch(url); if (!res.ok) throw new Error(`文件未找到: ${url}`); const ab = await res.arrayBuffer(); const wb = XLSX.read(ab, { type: 'array' }); return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); };
   try {
-    const [prio, deaths] = await Promise.all([loadExcel('/data/UcdpPrioConflict_v25_1.xlsx'), loadExcel('/data/BattleDeaths_v25_1_conf.xlsx')]);
-    rawConflictData = prio; battleDeathData = deaths;
-    normalizeCountryNames();
+    const [prio, deaths] = await Promise.all([
+      loadExcel('/data/UcdpPrioConflict_v25_1.xlsx'),
+      loadExcel('/data/BattleDeaths_v25_1_conf.xlsx')
+    ]);
+    deathConflictData = prio;
+    battleDeathData = deaths;
+    normalizeDeathCountryNames();
+    
+    try {
+      const warCountRaw = await loadExcel('/data/conflicts.xlsx');
+      warCountData = warCountRaw;
+      normalizeWarCountCountryNames();
+    } catch (err) {
+      console.warn('加载 conflicts.xlsx 失败，3D 柱状图将无法显示战争次数', err);
+    }
+    
     loadingMsg.value = "";
     updateView(1945);
-  } catch (err) { loadingMsg.value = "错误: " + err.message; console.error(err); }
+  } catch (err) {
+    loadingMsg.value = "错误: " + err.message;
+    console.error(err);
+  }
 });
 </script>
+
+<template>
+  <div class="war-heatmap-container">
+    <div class="war-heatmap-box">
+      <div v-if="loadingMsg" class="loading-overlay">{{ loadingMsg }}</div>
+      <div ref="chartRef" class="map-canvas"></div>
+      
+      <div v-if="!(currentYear === 1945 && summaryViewMode === '3d')" class="time-control-panel">
+        <div class="year-num">{{ currentYear === 1945 ? '1946-2024 历史累计' : currentYear }}</div>
+        <input type="range" v-model.number="currentYear" min="1945" max="2024" step="1" class="time-slider" />
+        <div class="slider-labels">
+          <span :class="{active: currentYear === 1945}">SUMMARY</span>
+          <span>1946</span>
+          <span>2024</span>
+        </div>
+      </div>
+      
+      <div class="view-toggle">
+        <button :class="{ active: summaryViewMode === '3d' }" @click="handleViewModeToggle('3d')">3D 柱状图</button>
+        <button :class="{ active: summaryViewMode === '2d' }" @click="handleViewModeToggle('2d')">2D 热力图</button>
+      </div>
+    </div>
+    <div v-if="selectedCountry" class="line-chart-container">
+      <div ref="chartLineRef" class="line-chart"></div>
+    </div>
+    <Teleport to="body">
+      <div v-if="showSankeyDialog" class="sankey-dialog-overlay" @click.self="closeSankeyDialog">
+        <div class="sankey-dialog">
+          <div class="sankey-dialog-header">
+            <span>{{ dialogCountry }} - 冲突流向桑基图</span>
+            <button class="sankey-dialog-close" @click="closeSankeyDialog">×</button>
+          </div>
+          <div class="sankey-dialog-body">
+            <div ref="sankeyContainer" class="sankey-container"></div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>
 
 <style scoped>
 .war-heatmap-container { width: 100%; display: flex; flex-direction: column; background-color: #FDFBF7; }
