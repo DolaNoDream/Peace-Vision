@@ -717,16 +717,16 @@ const renderMap = (mapData, isSummary = false) => {
   };
   myChart.setOption(option, true);
   
-  if (myChart && !(currentYear.value === 1945 && summaryViewMode.value === '3d')) {
+  if (myChart) {
     myChart.off('click');
     myChart.on('click', async (params) => {
       if (params.componentType === 'series' && params.seriesType === 'map') {
         const country = params.name;
         if (country) {
+          selectedCountry.value = country;
+          await nextTick();
+          await renderLineChart(country);
           if (currentYear.value === 1945) {
-            selectedCountry.value = country;
-            await nextTick();
-            await renderLineChart(country);
             await openSankeyDialog(country, null);
           } else {
             await openSankeyDialog(country, currentYear.value);
@@ -784,6 +784,31 @@ const render3DSummaryMap = (countryWarCounts) => {
     series: [{ type: 'bar3D', coordinateSystem: 'geo3D', data: barData, barSize: 0.8, minHeight: 0.3, shading: 'realistic', label: { show: true, formatter: (params) => params.data.name, position: 'top', distance: 5, textStyle: { fontSize: 10, color: '#333', backgroundColor: 'rgba(255,255,255,0.7)', padding: [2,4,2,4], borderRadius: 4 } }, itemStyle: { color: (params) => { const c = params.data.warCount; if (c > 500) return '#731513'; if (c > 100) return '#BD2E1F'; if (c > 30) return '#E66B22'; if (c > 5) return '#F8B87A'; return '#C9B99A'; }, borderWidth: 0, opacity: 0.92 } }]
   };
   myChart.setOption(option, true);
+  
+  // 为3D柱状图添加点击事件
+  myChart.on('click', async (params) => {
+    if (params.componentType === 'series' && params.seriesType === 'bar3D') {
+      const country = params.data.name;
+      if (country) {
+        selectedCountry.value = country;
+        await nextTick();
+        await renderLineChart(country);
+        await openSankeyDialog(country, null);
+      }
+    }
+  });
+};
+
+// ==================== 视图模式切换处理 ====================
+const handleViewModeToggle = (mode) => {
+  summaryViewMode.value = mode;
+  // 如果不在SUMMARY模式，切换到SUMMARY模式以便查看3D/2D视图
+  if (currentYear.value !== 1945) {
+    currentYear.value = 1945;
+  } else {
+    // 在SUMMARY模式下，重新渲染对应视图
+    updateView(currentYear.value);
+  }
 };
 
 // ==================== 视图更新入口 ====================
@@ -894,12 +919,12 @@ onMounted(async () => {
         </div>
       </div>
       
-      <div v-if="currentYear === 1945" class="view-toggle">
-        <button :class="{ active: summaryViewMode === '3d' }" @click="summaryViewMode = '3d'">3D 柱状图</button>
-        <button :class="{ active: summaryViewMode === '2d' }" @click="summaryViewMode = '2d'">2D 热力图</button>
+      <div class="view-toggle">
+        <button :class="{ active: summaryViewMode === '3d' }" @click="handleViewModeToggle('3d')">3D 柱状图</button>
+        <button :class="{ active: summaryViewMode === '2d' }" @click="handleViewModeToggle('2d')">2D 热力图</button>
       </div>
     </div>
-    <div v-if="currentYear === 1945 && summaryViewMode === '2d' && selectedCountry" class="line-chart-container">
+    <div v-if="selectedCountry" class="line-chart-container">
       <div ref="chartLineRef" class="line-chart"></div>
     </div>
     <Teleport to="body">
