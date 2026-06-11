@@ -120,6 +120,18 @@ const handleRiverClickYear = (year) => {
 
 onMounted(() => {
   loadData();
+  
+  // 监听热力图的桑基图请求事件
+  window.addEventListener('sankey-render-request', (event) => {
+    const { country } = event.detail;
+    console.log('热力图点击国家:', country);
+    if (country) {
+      handleViewSankey({
+        type: 'location',
+        value: country
+      });
+    }
+  });
 });
 </script>
 
