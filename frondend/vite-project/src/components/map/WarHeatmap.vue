@@ -14,9 +14,6 @@ let lineChart = null;
 
 const summaryViewMode = ref('3d');
 const selectedCountry = ref(null);
-const showSankeyDialog = ref(false);
-const dialogCountry = ref('');
-const sankeyContainer = ref(null);
 
 // 死亡人数数据（UCDP）
 let deathConflictData = [];
@@ -660,26 +657,11 @@ const clearLineChart = () => {
   selectedCountry.value = null;
 };
 
-const openSankeyDialog = async (countryName, year = null) => {
-  dialogCountry.value = countryName;
-  showSankeyDialog.value = true;
-  await nextTick();
-  if (sankeyContainer.value) {
-    sankeyContainer.value.innerHTML = '';
-    const placeholder = document.createElement('div');
-    placeholder.style.cssText = 'display: flex; justify-content: center; align-items: center; height: 100%; color: #999; font-size: 16px;';
-    placeholder.textContent = '桑基图正在开发中，敬请期待...';
-    sankeyContainer.value.appendChild(placeholder);
-    const event = new CustomEvent('sankey-render-request', {
-      detail: { country: countryName, year: year, container: sankeyContainer.value }
-    });
-    window.dispatchEvent(event);
-  }
-};
-
-const closeSankeyDialog = () => {
-  showSankeyDialog.value = false;
-  dialogCountry.value = '';
+const triggerSankeyEvent = (countryName, year = null) => {
+  const event = new CustomEvent('sankey-render-request', {
+    detail: { country: countryName, year: year }
+  });
+  window.dispatchEvent(event);
 };
 
 // ==================== 2D 热力图渲染（基于死亡数据） ====================
@@ -727,17 +709,13 @@ const renderMap = (mapData, isSummary = false) => {
           await nextTick();
           await renderLineChart(country);
           if (currentYear.value === 1945) {
-            await openSankeyDialog(country, null);
+            triggerSankeyEvent(country, null);
           } else {
-            await openSankeyDialog(country, currentYear.value);
+            triggerSankeyEvent(country, currentYear.value);
           }
         }
       }
     });
-  } else {
-    if (myChart) myChart.off('click');
-    clearLineChart();
-    closeSankeyDialog();
   }
 };
 
@@ -746,7 +724,6 @@ const render3DSummaryMap = (countryWarCounts) => {
   if (!myChart) return;
   if (myChart) myChart.off('click');
   clearLineChart();
-  closeSankeyDialog();
   
   const barData = [];
   for (const [countryName, warCount] of countryWarCounts.entries()) {
@@ -793,7 +770,7 @@ const render3DSummaryMap = (countryWarCounts) => {
         selectedCountry.value = country;
         await nextTick();
         await renderLineChart(country);
-        await openSankeyDialog(country, null);
+        triggerSankeyEvent(country, null);
       }
     }
   });
@@ -927,19 +904,6 @@ onMounted(async () => {
     <div v-if="selectedCountry" class="line-chart-container">
       <div ref="chartLineRef" class="line-chart"></div>
     </div>
-    <Teleport to="body">
-      <div v-if="showSankeyDialog" class="sankey-dialog-overlay" @click.self="closeSankeyDialog">
-        <div class="sankey-dialog">
-          <div class="sankey-dialog-header">
-            <span>{{ dialogCountry }} - 冲突流向桑基图</span>
-            <button class="sankey-dialog-close" @click="closeSankeyDialog">×</button>
-          </div>
-          <div class="sankey-dialog-body">
-            <div ref="sankeyContainer" class="sankey-container"></div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
@@ -959,10 +923,4 @@ onMounted(async () => {
 .view-toggle button:hover:not(.active) { background-color: #D1CDC3; }
 .line-chart-container { width: 100%; height: 30vh; padding: 20px; background: #FDFBF7; border-top: 1px solid #E2DFD7; box-sizing: border-box; }
 .line-chart { width: 100%; height: 100%; }
-.sankey-dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-.sankey-dialog { background: white; border-radius: 12px; width: 80%; max-width: 1200px; height: 70%; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; }
-.sankey-dialog-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #731513; color: white; font-weight: bold; font-size: 18px; }
-.sankey-dialog-close { background: none; border: none; color: white; font-size: 28px; cursor: pointer; line-height: 1; }
-.sankey-dialog-body { flex: 1; padding: 16px; overflow: auto; }
-.sankey-container { width: 100%; height: 100%; min-height: 400px; }
 </style>
