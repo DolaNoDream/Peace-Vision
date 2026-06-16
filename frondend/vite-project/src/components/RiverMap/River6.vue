@@ -95,7 +95,7 @@ const initChart = () => {
 
           if (highIntensityTotal > 0) {
             result += `<div style="display:flex;align-items:center;margin:3px 0;">
-              <span style="display:inline-block;width:10px;height:10px;background:#AA3118;margin-right:5px;"></span>
+              <span style="display:inline-block;width:10px;height:10px;background:#BD2E1F;margin-right:5px;"></span>
               <span>高强度战争: ${highIntensityTotal}</span>
             </div>`;
           }
@@ -108,11 +108,11 @@ const initChart = () => {
         } else {
           // 1989年及之后：显示细分数据类别
           const categoryColors = {
-            '高强度战争（伤亡50000+）': '#DC143C',
-            '高强度战争（伤亡5000~50000）': '#8B0000',
-            '高强度战争（伤亡900~5000）': '#CD5C5C',
-            '低强度冲突（伤亡0~300）': '#FFD700',
-            '低强度冲突（伤亡300~1000）': '#FFA500'
+            '高强度战争（伤亡50000+）': '#731513',
+            '高强度战争（伤亡5000~50000）': '#AE2B1E',
+            '高强度战争（伤亡900~5000）': '#CD1625',
+            '低强度冲突（伤亡0~300）': '#F8B87A',
+            '低强度冲突（伤亡300~1000）': '#E66B22'
           };
 
           // 按类别名称排序，保持一致的显示顺序
@@ -171,6 +171,7 @@ const initChart = () => {
         animation: true,
         label: {
           show: true,
+          backgroundColor: '#731513',
           formatter: function(params) {
             return Math.round(params.value) + '年';
           }
@@ -206,7 +207,8 @@ const initChart = () => {
         // 河流图数据：[年份, 数值, 类别]
         data: riverData,
         // 各河流类别的颜色映射，按数据插入顺序
-        color: ['#DC143C', '#8B0000', '#AA3118', '#CD5C5C', 'transparent', '#FFD700', '#F0A65A', '#FFA500']
+        // 顺序：50000+ | 5000~50000 | 高强度战争(汇总) | 900~5000 | 间隔 | 0~300 | 低强度冲突(汇总) | 300~1000
+        color: ['#731513', '#AE2B1E', '#BD2E1F', '#CD1625', 'transparent', '#F8B87A', '#F0A65A', '#E66B22']
       }
     ]
   };
@@ -260,13 +262,18 @@ watch(() => props.rawData, (newData) => {
 </script>
 
 <style scoped>
-.war-stream-box {
+/*
   --bg-global: #12141C;
   --bg-container: #1E222D;
   --text-primary: #E2E8F0;
   --text-secondary: #94A3B8;
-  --border-color: #334155;
-
+  --border-color: #334155;*/
+.war-stream-box {
+  --bg-global: #FDFBF7;      /* 暖白背景（WarHeatmap 风格） */
+  --bg-container: #EFEBE7;    /* 容器白色 */
+  --text-primary: #2C2B28;    /* 深色文字 */
+  --text-secondary: #7A7A77;  /* 灰色文字 */
+  --border-color: #E2DFD7;    /* 边框色 */
   width: 100%;
   height: 100%;
   background-color: var(--bg-global);

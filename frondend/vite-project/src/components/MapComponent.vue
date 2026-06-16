@@ -115,7 +115,7 @@ const updateChart = () => {
     xAxis: {
       type: 'value',
       axisLabel: {
-        color: '#666'
+        color: '#888888'
       },
       axisLine: {
         lineStyle: {
@@ -127,7 +127,7 @@ const updateChart = () => {
       type: 'category',
       data: names,
       axisLabel: {
-        color: '#666',
+        color: '#888888',
         fontSize: 11
       },
       axisLine: {
@@ -145,12 +145,12 @@ const updateChart = () => {
           itemStyle: {
             color: names[idx] === props.selectedLocation 
               ? new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                  { offset: 0, color: '#667eea' },
-                  { offset: 1, color: '#764ba2' }
+                  { offset: 0, color: '#D8873F' },
+                  { offset: 1, color: '#AE2B1E' }
                 ])
               : new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                  { offset: 0, color: '#74add1' },
-                  { offset: 1, color: '#4575b4' }
+                  { offset: 0, color: '#CF704A' },
+                  { offset: 1, color: '#AA2F12' }
                 ])
           }
         })),
@@ -158,7 +158,7 @@ const updateChart = () => {
         label: {
           show: true,
           position: 'right',
-          color: '#333',
+          color: '#666666',
           fontSize: 11
         },
         itemStyle: {
@@ -195,7 +195,7 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f8f9fa;
+  background: #faf8f5;
   border-radius: 8px;
   padding: 16px;
   box-sizing: border-box;
@@ -211,12 +211,12 @@ onUnmounted(() => {
 .map-header h3 {
   margin: 0;
   font-size: 16px;
-  color: #333;
+  color: #666666;
 }
 
 .map-info {
   font-size: 12px;
-  color: #888;
+  color: #999999;
 }
 
 .map-chart {
@@ -231,7 +231,7 @@ onUnmounted(() => {
 
 .list-header {
   font-size: 12px;
-  color: #666;
+  color: #888888;
   margin-bottom: 8px;
   font-weight: 500;
 }
@@ -245,7 +245,7 @@ onUnmounted(() => {
 .location-card {
   padding: 8px 12px;
   background: white;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #dddddd;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s;
@@ -255,18 +255,18 @@ onUnmounted(() => {
 }
 
 .location-card:hover {
-  border-color: #667eea;
+  border-color: #D8873F;
   transform: translateY(-1px);
 }
 
 .location-card.active {
-  border-color: #667eea;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #D8873F;
+  background: linear-gradient(135deg, #D8873F 0%, #AE2B1E 100%);
 }
 
 .location-name {
   font-size: 13px;
-  color: #333;
+  color: #666666;
 }
 
 .location-card.active .location-name,
@@ -276,7 +276,7 @@ onUnmounted(() => {
 
 .location-count {
   font-size: 11px;
-  color: #666;
+  color: #888888;
   background: #f0f2f5;
   padding: 2px 8px;
   border-radius: 4px;
@@ -289,7 +289,7 @@ onUnmounted(() => {
 .map-selected {
   margin-top: 12px;
   padding: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #D8873F 0%, #AE2B1E 100%);
   border-radius: 8px;
   color: white;
   display: flex;
@@ -315,7 +315,7 @@ onUnmounted(() => {
 .view-detail-btn {
   margin-top: 12px;
   padding: 10px 16px;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #D8873F 0%, #AE2B1E 100%);
   color: white;
   border: none;
   border-radius: 6px;
