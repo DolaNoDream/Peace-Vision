@@ -141,7 +141,7 @@ const updateChart = () => {
       type: 'category',
       data: years,
       axisLabel: {
-        color: '#333'
+        color: '#666666'
       },
       axisLine: {
         lineStyle: {
@@ -155,11 +155,11 @@ const updateChart = () => {
         name: '冲突数量',
         position: 'left',
         axisLabel: {
-          color: '#5470c6'
+          color: '#D8873F'
         },
         axisLine: {
           lineStyle: {
-            color: '#5470c6'
+            color: '#D8873F'
           }
         }
       },
@@ -168,11 +168,11 @@ const updateChart = () => {
         name: '死亡人数',
         position: 'right',
         axisLabel: {
-          color: '#ee6666'
+          color: '#CF704A'
         },
         axisLine: {
           lineStyle: {
-            color: '#ee6666'
+            color: '#CF704A'
           }
         }
       }
@@ -184,7 +184,7 @@ const updateChart = () => {
         data: counts.map((count, idx) => ({
           value: count,
           itemStyle: {
-            color: years[idx] === props.selectedYear ? '#f4a460' : '#5470c6'
+            color: years[idx] === props.selectedYear ? '#AE2B1E' : '#D8873F'
           }
         })),
         itemStyle: {
@@ -198,7 +198,7 @@ const updateChart = () => {
         smooth: true,
         data: deaths,
         itemStyle: {
-          color: '#ee6666'
+          color: '#CF704A'
         },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -238,7 +238,7 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f8f9fa;
+  background: #3f3f3f;
   border-radius: 8px;
   padding: 16px;
   box-sizing: border-box;
@@ -254,7 +254,7 @@ onUnmounted(() => {
 .river-header h3 {
   margin: 0;
   font-size: 16px;
-  color: #333;
+  color: #666666;
 }
 
 .river-info {

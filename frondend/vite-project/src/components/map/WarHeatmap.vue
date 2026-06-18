@@ -670,7 +670,7 @@ const renderMap = (mapData, isSummary = false) => {
   const option = {
     backgroundColor: '#FDFBF7',
     title: {
-      text: isSummary ? '1946-2024 全球战争死亡数据汇总 (累计死亡人数)' : `全球战争伤亡演变 (${currentYear.value}年)`,
+      text: isSummary ? '1946-2024 全球战争死亡人数汇总 (累计死亡人数)' : `全球战争伤亡演变 (${currentYear.value}年)`,
       subtext: isSummary ? '点击国家显示年度死亡趋势及详细桑基图' : '点击国家显示该年桑基图',
       left: 'center', top: 20,
       textStyle: { color: '#2C2B28', fontSize: 24, fontWeight: 'bold' }
@@ -695,7 +695,7 @@ const renderMap = (mapData, isSummary = false) => {
       ],
       outOfRange: { color: '#ECE8E3' }
     },
-    series: [{ type: 'map', map: 'world', roam: true, nameMap: nameMap, itemStyle: { areaColor: '#ECE8E3', borderColor: '#D1CDC3' }, emphasis: { itemStyle: { areaColor: '#E1BC85' } }, data: mapData }]
+    series: [{ type: 'map', map: 'world', roam: true, nameMap: nameMap, itemStyle: { areaColor: '#ECE8E3', borderColor: '#D1CDC3' }, emphasis: { itemStyle: { areaColor: '#D8DBC0' } }, data: mapData }]
   };
   myChart.setOption(option, true);
   
@@ -735,7 +735,7 @@ const render3DSummaryMap = (countryWarCounts) => {
   }
   const option = {
     backgroundColor: '#FDFBF7',
-    title: { text: '1946-2024 全球战争总数统计 (3D柱状图)', subtext: '柱体高度代表战争场次数（对数缩放） | 鼠标左键旋转，右键拖拽平移', left: 'center', top: 20, textStyle: { color: '#2C2B28', fontSize: 24, fontWeight: 'bold' } },
+    title: { text: '1946-2024 全球战争总数统计 (3D柱状图)', subtext: '柱体高度代表战争场次数（对数缩放） | 鼠标左键旋转，中键拖拽平移', left: 'center', top: 20, textStyle: { color: '#2C2B28', fontSize: 24, fontWeight: 'bold' } },
     tooltip: { trigger: 'item', formatter: (params) => { if (params.componentType === 'series' && params.seriesType === 'bar3D') { const data = params.data; return `<b>${data.name}</b><br/>战争总数: ${data.warCount.toLocaleString()} 场`; } return params.name; } },
     geo3D: {
       map: 'world',
