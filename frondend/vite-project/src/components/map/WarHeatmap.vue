@@ -898,6 +898,14 @@ onMounted(async () => {
         <button :class="{ active: summaryViewMode === '3d' }" @click="summaryViewMode = '3d'">3D 柱状图</button>
         <button :class="{ active: summaryViewMode === '2d' }" @click="summaryViewMode = '2d'">2D 热力图</button>
       </div>
+      
+      <div class="view-toggle">
+        <button :class="{ active: summaryViewMode === '3d' }" @click="handleViewModeToggle('3d')">3D 柱状图</button>
+        <button :class="{ active: summaryViewMode === '2d' }" @click="handleViewModeToggle('2d')">2D 热力图</button>
+      </div>
+    </div>
+    <div v-if="selectedCountry" class="line-chart-container">
+      <div ref="chartLineRef" class="line-chart"></div>
     </div>
     <div v-if="currentYear === 1945 && summaryViewMode === '2d' && selectedCountry" class="line-chart-container">
       <div ref="chartLineRef" class="line-chart"></div>
