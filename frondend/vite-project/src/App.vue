@@ -77,14 +77,14 @@ const loadData = async () => {
   dataLoaded.value = false;
   
   try {
-    const mainResponse = await fetch('/conflicts.xlsx');
+    const mainResponse = await fetch('/data/conflicts.xlsx');
     if (!mainResponse.ok) {
       throw new Error('主数据文件加载失败');
     }
     const mainBlob = await mainResponse.blob();
     await dataManager.value.loadMainFile(mainBlob);
 
-    const yearResponse = await fetch('/UcdpPrioConflict_v25_1.xlsx');
+    const yearResponse = await fetch('/data/UcdpPrioConflict_v25_1.xlsx');
     if (yearResponse.ok) {
       const yearBlob = await yearResponse.blob();
       await dataManager.value.loadYearFile(yearBlob);
