@@ -144,17 +144,18 @@ const initChart = () => {
     legend: {
       data: ['高强度战争', '低强度冲突', '高强度战争（伤亡50000+）', '高强度战争（伤亡5000~50000）', '高强度战争（伤亡900~5000）', '低强度冲突（伤亡0~300）', '低强度冲突（伤亡300~1000）'],
       orient: 'vertical',
-      left: 100,
-      top: 40,
-      itemGap: 15,
-      selectedMode: true
+      left: 20,
+      top: 10,
+      itemGap: 10,
+      selectedMode: true,
+      textStyle: { fontSize: 11 }
     },
     // 单轴：themeRiver 使用 singleAxis 代替常规的 xAxis/yAxis
     singleAxis: {
-      top: '8%',
-      bottom: '10%',
-      left: '5%',
-      right: '5%',
+      top: 10,
+      bottom: 25,
+      left: 20,
+      right: 50,
       axisTick: {},
       // 坐标轴标签格式化，将数值显示为"年份"
       axisLabel: {
@@ -214,6 +215,10 @@ const initChart = () => {
   };
 
   myChart.setOption(option);
+
+  // 关键：强制图表适配容器尺寸
+  myChart.resize();
+
   console.log('图表配置已应用');
 
   myChart.getZr().on('click', (params) => {
@@ -262,45 +267,45 @@ watch(() => props.rawData, (newData) => {
 </script>
 
 <style scoped>
-/*
-  --bg-global: #12141C;
-  --bg-container: #1E222D;
-  --text-primary: #E2E8F0;
-  --text-secondary: #94A3B8;
-  --border-color: #334155;*/
 .war-stream-box {
-  --bg-global: #FDFBF7;      /* 暖白背景（WarHeatmap 风格） */
-  --bg-container: #EFEBE7;    /* 容器白色 */
-  --text-primary: #2C2B28;    /* 深色文字 */
-  --text-secondary: #7A7A77;  /* 灰色文字 */
-  --border-color: #E2DFD7;    /* 边框色 */
+  --bg-global: #FDFBF7;
+  --bg-container: #EFEBE7;
+  --text-primary: #2C2B28;
+  --text-secondary: #7A7A77;
+  --border-color: #E2DFD7;
   width: 100%;
-  height: 100%;
-  background-color: var(--bg-global);
-  padding: 5%;
+  height: 80vh;              /* 固定高度，便于内部 flex 子项计算 */
+  padding: 10px 0 0 0;
   box-sizing: border-box;
+  background-color: var(--bg-global);
   display: flex;
   flex-direction: column;
 }
 
 .river-header {
-  text-align: left;
-  margin-bottom: 2%;
+  text-align: center;
+  margin-bottom: 10px;
+  padding: 0 10px;
+  flex-shrink: 0;           /* 防止标题被压缩 */
 }
 
 .title {
-  font-size: 1.5rem;
+  font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
 }
 
 .river-chart-container {
-  flex: 1;
+  flex: 1 1 auto;           /* 占据剩余高度 */
   width: 100%;
-  min-height: 300px;
+  min-height: 0;            /* 防止 flex 溢出，允许收缩 */
   background-color: var(--bg-container);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;         /* 确保子元素不溢出边界 */
+  margin: 20px;
+  padding: 10px;            /* 内边距，使河流图在容器内缩小，避免显示不全 */
+  box-sizing: border-box;
 }
 </style>
