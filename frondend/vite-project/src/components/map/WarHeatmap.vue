@@ -14,6 +14,9 @@ let lineChart = null;
 
 const summaryViewMode = ref('3d');
 const selectedCountry = ref(null);
+const showSankeyDialog = ref(false);
+const dialogCountry = ref('');
+const sankeyContainer = ref(null);
 
 // 死亡人数数据（UCDP）
 let deathConflictData = [];
@@ -657,11 +660,26 @@ const clearLineChart = () => {
   selectedCountry.value = null;
 };
 
-const triggerSankeyEvent = (countryName, year = null) => {
-  const event = new CustomEvent('sankey-render-request', {
-    detail: { country: countryName, year: year }
-  });
-  window.dispatchEvent(event);
+const openSankeyDialog = async (countryName, year = null) => {
+  dialogCountry.value = countryName;
+  showSankeyDialog.value = true;
+  await nextTick();
+  if (sankeyContainer.value) {
+    sankeyContainer.value.innerHTML = '';
+    const placeholder = document.createElement('div');
+    placeholder.style.cssText = 'display: flex; justify-content: center; align-items: center; height: 100%; color: #999; font-size: 16px;';
+    placeholder.textContent = '桑基图正在开发中，敬请期待...';
+    sankeyContainer.value.appendChild(placeholder);
+    const event = new CustomEvent('sankey-render-request', {
+      detail: { country: countryName, year: year, container: sankeyContainer.value }
+    });
+    window.dispatchEvent(event);
+  }
+};
+
+const closeSankeyDialog = () => {
+  showSankeyDialog.value = false;
+  dialogCountry.value = '';
 };
 
 // ==================== 2D 热力图渲染（基于死亡数据） ====================
@@ -670,7 +688,7 @@ const renderMap = (mapData, isSummary = false) => {
   const option = {
     backgroundColor: '#FDFBF7',
     title: {
-      text: isSummary ? '1946-2024 全球战争死亡人数汇总 (累计死亡人数)' : `全球战争伤亡演变 (${currentYear.value}年)`,
+      text: isSummary ? '1946-2024 全球战争死亡数据汇总 (累计死亡人数)' : `全球战争伤亡演变 (${currentYear.value}年)`,
       subtext: isSummary ? '点击国家显示年度死亡趋势及详细桑基图' : '点击国家显示该年桑基图',
       left: 'center', top: 8,
       textStyle: { color: '#2C2B28', fontSize: 20, fontWeight: 'bold' }
@@ -695,27 +713,31 @@ const renderMap = (mapData, isSummary = false) => {
       ],
       outOfRange: { color: '#ECE8E3' }
     },
-    series: [{ type: 'map', map: 'world', roam: true, nameMap: nameMap, itemStyle: { areaColor: '#ECE8E3', borderColor: '#D1CDC3' }, emphasis: { itemStyle: { areaColor: '#D8DBC0' } }, data: mapData }]
+    series: [{ type: 'map', map: 'world', roam: true, nameMap: nameMap, itemStyle: { areaColor: '#ECE8E3', borderColor: '#D1CDC3' }, emphasis: { itemStyle: { areaColor: '#E1BC85' } }, data: mapData }]
   };
   myChart.setOption(option, true);
   
-  if (myChart) {
+  if (myChart && !(currentYear.value === 1945 && summaryViewMode.value === '3d')) {
     myChart.off('click');
     myChart.on('click', async (params) => {
       if (params.componentType === 'series' && params.seriesType === 'map') {
         const country = params.name;
         if (country) {
-          selectedCountry.value = country;
-          await nextTick();
-          await renderLineChart(country);
           if (currentYear.value === 1945) {
-            triggerSankeyEvent(country, null);
+            selectedCountry.value = country;
+            await nextTick();
+            await renderLineChart(country);
+            await openSankeyDialog(country, null);
           } else {
-            triggerSankeyEvent(country, currentYear.value);
+            await openSankeyDialog(country, currentYear.value);
           }
         }
       }
     });
+  } else {
+    if (myChart) myChart.off('click');
+    clearLineChart();
+    closeSankeyDialog();
   }
 };
 
@@ -724,6 +746,7 @@ const render3DSummaryMap = (countryWarCounts) => {
   if (!myChart) return;
   if (myChart) myChart.off('click');
   clearLineChart();
+  closeSankeyDialog();
   
   const barData = [];
   for (const [countryName, warCount] of countryWarCounts.entries()) {
@@ -735,7 +758,7 @@ const render3DSummaryMap = (countryWarCounts) => {
   }
   const option = {
     backgroundColor: '#FDFBF7',
-    title: { text: '1946-2024 全球战争总数统计 (3D柱状图)', subtext: '柱体高度代表战争场次数（对数缩放） | 鼠标左键旋转，中键拖拽平移', left: 'center', top: 8, textStyle: { color: '#2C2B28', fontSize: 20, fontWeight: 'bold' } },
+    title: { text: '1946-2024 全球战争总数统计 (3D柱状图)', subtext: '柱体高度代表战争场次数（对数缩放） | 鼠标左键旋转，右键拖拽平移', left: 'center', top: 20, textStyle: { color: '#2C2B28', fontSize: 24, fontWeight: 'bold' } },
     tooltip: { trigger: 'item', formatter: (params) => { if (params.componentType === 'series' && params.seriesType === 'bar3D') { const data = params.data; return `<b>${data.name}</b><br/>战争总数: ${data.warCount.toLocaleString()} 场`; } return params.name; } },
     geo3D: {
       map: 'world',
@@ -761,31 +784,6 @@ const render3DSummaryMap = (countryWarCounts) => {
     series: [{ type: 'bar3D', coordinateSystem: 'geo3D', data: barData, barSize: 0.8, minHeight: 0.3, shading: 'realistic', label: { show: true, formatter: (params) => params.data.name, position: 'top', distance: 5, textStyle: { fontSize: 10, color: '#333', backgroundColor: 'rgba(255,255,255,0.7)', padding: [2,4,2,4], borderRadius: 4 } }, itemStyle: { color: (params) => { const c = params.data.warCount; if (c > 500) return '#731513'; if (c > 100) return '#BD2E1F'; if (c > 30) return '#E66B22'; if (c > 5) return '#F8B87A'; return '#C9B99A'; }, borderWidth: 0, opacity: 0.92 } }]
   };
   myChart.setOption(option, true);
-  
-  // 为3D柱状图添加点击事件
-  myChart.on('click', async (params) => {
-    if (params.componentType === 'series' && params.seriesType === 'bar3D') {
-      const country = params.data.name;
-      if (country) {
-        selectedCountry.value = country;
-        await nextTick();
-        await renderLineChart(country);
-        triggerSankeyEvent(country, null);
-      }
-    }
-  });
-};
-
-// ==================== 视图模式切换处理 ====================
-const handleViewModeToggle = (mode) => {
-  summaryViewMode.value = mode;
-  // 如果不在SUMMARY模式，切换到SUMMARY模式以便查看3D/2D视图
-  if (currentYear.value !== 1945) {
-    currentYear.value = 1945;
-  } else {
-    // 在SUMMARY模式下，重新渲染对应视图
-    updateView(currentYear.value);
-  }
 };
 
 // ==================== 视图更新入口 ====================
@@ -896,6 +894,11 @@ onMounted(async () => {
         </div>
       </div>
       
+      <div v-if="currentYear === 1945" class="view-toggle">
+        <button :class="{ active: summaryViewMode === '3d' }" @click="summaryViewMode = '3d'">3D 柱状图</button>
+        <button :class="{ active: summaryViewMode === '2d' }" @click="summaryViewMode = '2d'">2D 热力图</button>
+      </div>
+      
       <div class="view-toggle">
         <button :class="{ active: summaryViewMode === '3d' }" @click="handleViewModeToggle('3d')">3D 柱状图</button>
         <button :class="{ active: summaryViewMode === '2d' }" @click="handleViewModeToggle('2d')">2D 热力图</button>
@@ -904,6 +907,22 @@ onMounted(async () => {
     <div v-if="selectedCountry" class="line-chart-container">
       <div ref="chartLineRef" class="line-chart"></div>
     </div>
+    <div v-if="currentYear === 1945 && summaryViewMode === '2d' && selectedCountry" class="line-chart-container">
+      <div ref="chartLineRef" class="line-chart"></div>
+    </div>
+    <Teleport to="body">
+      <div v-if="showSankeyDialog" class="sankey-dialog-overlay" @click.self="closeSankeyDialog">
+        <div class="sankey-dialog">
+          <div class="sankey-dialog-header">
+            <span>{{ dialogCountry }} - 冲突流向桑基图</span>
+            <button class="sankey-dialog-close" @click="closeSankeyDialog">×</button>
+          </div>
+          <div class="sankey-dialog-body">
+            <div ref="sankeyContainer" class="sankey-container"></div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -923,4 +942,10 @@ onMounted(async () => {
 .view-toggle button:hover:not(.active) { background-color: #D1CDC3; }
 .line-chart-container { width: 100%; height: 30vh; padding: 10px 0 0 0; background: #FDFBF7; border-top: 1px solid #E2DFD7; box-sizing: border-box; }
 .line-chart { width: 100%; height: 100%; }
+.sankey-dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+.sankey-dialog { background: white; border-radius: 12px; width: 80%; max-width: 1200px; height: 70%; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; }
+.sankey-dialog-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #731513; color: white; font-weight: bold; font-size: 18px; }
+.sankey-dialog-close { background: none; border: none; color: white; font-size: 28px; cursor: pointer; line-height: 1; }
+.sankey-dialog-body { flex: 1; padding: 16px; overflow: auto; }
+.sankey-container { width: 100%; height: 100%; min-height: 400px; }
 </style>
