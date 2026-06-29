@@ -136,26 +136,40 @@ onMounted(() => {
 </script>
 
 <style>
-body {
-  background-color: #514747;
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
   margin: 0;
   padding: 0;
+}
+
+body {
+  background-color: #514747;
   font-family: 'Inter', sans-serif;
 }
 </style>
 
 <style scoped>
 .app-container {
-  width: 100%;
+  width: 100vw;
   min-height: 100vh;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  overflow-x: hidden;
 }
 
 .app-header {
+  width: 100%;
   background: linear-gradient(135deg, #731513 0%, #96281B 100%);
   color: #F9F6F0;
-  padding: 20px 30px;
+  padding: 20px 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -197,24 +211,37 @@ body {
 
 .app-content {
   flex: 1;
-  padding: 20px;
+  width: 100%;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 0;
+  align-items: center;
+  justify-content: center;
 }
 
 .module-section {
-  border-radius: 10px;
+  border-radius: 0;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  box-shadow: none;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .map-section {
-  min-height: 60vh;
+  min-height: 70vh;
+  width: 100%;
 }
 
 .river-section {
-  min-height: 40vh;
+  min-height: 80vh;
+  width: 100%;
 }
 
 .empty-state {
