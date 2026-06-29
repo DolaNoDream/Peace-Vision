@@ -640,12 +640,12 @@ const renderLineChart = async (countryName) => {
   const years = yearlyData.map(d => d.year);
   const deaths = yearlyData.map(d => d.deaths);
   lineChart.setOption({
-    title: { text: `${countryName} 战争死亡人数趋势 (1946-2024)`, left: 'center', textStyle: { fontSize: 14 } },
+    title: { text: `${countryName} 战争死亡人数趋势 (1946-2024)`, left: 'center', top: 5, textStyle: { fontSize: 13 } },
     tooltip: { trigger: 'axis', valueFormatter: (value) => value?.toLocaleString() + ' 人' },
     xAxis: { type: 'category', data: years, name: '年份', axisLabel: { rotate: 45 } },
     yAxis: { type: 'value', name: '死亡人数', axisLabel: { formatter: (val) => val.toLocaleString() } },
     series: [{ data: deaths, type: 'line', smooth: false, lineStyle: { color: '#731513', width: 2 }, areaStyle: { opacity: 0.1, color: '#BD2E1F' }, symbol: 'circle', symbolSize: 4, itemStyle: { color: '#731513' } }],
-    grid: { containLabel: true, bottom: 30, top: 50, left: 60, right: 30 }
+    grid: { containLabel: true, top: 35, bottom: 10, left: 10, right: 10 }
   });
 };
 
@@ -672,12 +672,12 @@ const renderMap = (mapData, isSummary = false) => {
     title: {
       text: isSummary ? '1946-2024 全球战争死亡人数汇总 (累计死亡人数)' : `全球战争伤亡演变 (${currentYear.value}年)`,
       subtext: isSummary ? '点击国家显示年度死亡趋势及详细桑基图' : '点击国家显示该年桑基图',
-      left: 'center', top: 20,
-      textStyle: { color: '#2C2B28', fontSize: 24, fontWeight: 'bold' }
+      left: 'center', top: 8,
+      textStyle: { color: '#2C2B28', fontSize: 20, fontWeight: 'bold' }
     },
     tooltip: { trigger: 'item', formatter: (params) => { const val = Number(params.data?.value) || 0; return `<b>${params.name}</b><br/>${isSummary ? '历史累计死亡' : '当年估计死亡'}: ${Math.round(val).toLocaleString()} 人`; } },
     visualMap: {
-      type: 'piecewise', left: '5%', bottom: '15%',
+      type: 'piecewise', left: '2%', bottom: '5%',
       pieces: isSummary ? [
         { min: 500000, label: '>50万', color: '#4E0E0C' },
         { min: 100000, max: 499999, label: '10万-49.9万', color: '#731513' },
@@ -735,7 +735,7 @@ const render3DSummaryMap = (countryWarCounts) => {
   }
   const option = {
     backgroundColor: '#FDFBF7',
-    title: { text: '1946-2024 全球战争总数统计 (3D柱状图)', subtext: '柱体高度代表战争场次数（对数缩放） | 鼠标左键旋转，中键拖拽平移', left: 'center', top: 20, textStyle: { color: '#2C2B28', fontSize: 24, fontWeight: 'bold' } },
+    title: { text: '1946-2024 全球战争总数统计 (3D柱状图)', subtext: '柱体高度代表战争场次数（对数缩放） | 鼠标左键旋转，中键拖拽平移', left: 'center', top: 8, textStyle: { color: '#2C2B28', fontSize: 20, fontWeight: 'bold' } },
     tooltip: { trigger: 'item', formatter: (params) => { if (params.componentType === 'series' && params.seriesType === 'bar3D') { const data = params.data; return `<b>${data.name}</b><br/>战争总数: ${data.warCount.toLocaleString()} 场`; } return params.name; } },
     geo3D: {
       map: 'world',
@@ -912,15 +912,15 @@ onMounted(async () => {
 .war-heatmap-box { width: 100%; height: 70vh; position: relative; background-color: #FDFBF7; }
 .map-canvas { width: 100%; height: 100%; }
 .loading-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 10; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-.time-control-panel { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 70%; background: rgba(255,255,255,0.95); padding: 20px 40px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; border: 1px solid #E2DFD7; }
-.year-num { font-size: 32px; font-weight: 900; color: #731513; margin-bottom: 5px; }
-.time-slider { width: 100%; height: 10px; cursor: pointer; accent-color: #731513; }
-.slider-labels { display: flex; justify-content: space-between; margin-top: 5px; color: #7A7A77; font-size: 12px; }
+.time-control-panel { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 70%; background: rgba(255,255,255,0.95); padding: 6px 30px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; border: 1px solid #E2DFD7; }
+.year-num { font-size: 22px; font-weight: 900; color: #731513; margin-bottom: 2px; }
+.time-slider { width: 100%; height: 6px; cursor: pointer; accent-color: #731513; }
+.slider-labels { display: flex; justify-content: space-between; margin-top: 2px; color: #7A7A77; font-size: 10px; }
 .active { color: #731513; font-weight: bold; }
 .view-toggle { position: absolute; top: 20px; right: 20px; z-index: 20; display: flex; gap: 8px; background: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 32px; backdrop-filter: blur(4px); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
 .view-toggle button { padding: 4px 12px; border: none; border-radius: 24px; cursor: pointer; font-size: 12px; font-weight: 500; background-color: #ECE8E3; color: #4a4a47; transition: all 0.2s ease; }
 .view-toggle button.active { background-color: #731513; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .view-toggle button:hover:not(.active) { background-color: #D1CDC3; }
-.line-chart-container { width: 100%; height: 30vh; padding: 20px; background: #FDFBF7; border-top: 1px solid #E2DFD7; box-sizing: border-box; }
+.line-chart-container { width: 100%; height: 30vh; padding: 10px 0 0 0; background: #FDFBF7; border-top: 1px solid #E2DFD7; box-sizing: border-box; }
 .line-chart { width: 100%; height: 100%; }
 </style>

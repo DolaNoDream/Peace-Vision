@@ -128,13 +128,13 @@ const updateChart = () => {
     },
     legend: {
       data: ['冲突数量', '死亡人数'],
-      top: 10
+      top: '10'
     },
     grid: {
       left: '3%',
       right: '4%',
       bottom: '3%',
-      top: '60',
+      top: '20%',
       containLabel: true
     },
     xAxis: {
